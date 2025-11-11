@@ -1,0 +1,218 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Company basic Information
+  name String @unique
+  website String?
+  linkedinUrl String?
+  xingUrl String?
+  kununuUrl String?
+
+  // location
+  address String?
+  street String?
+  city String?
+  state String?
+  zipCode String?
+  country String? @default("Germany")
+
+  latitude Float?
+  longitude Float?
+
+  // details
+  industry String?
+  size Int?
+  headquarters String?
+  foundedYear Int?
+  description String? @db.Text
+
+  // ratings
+  kununuRating Float?
+  glassdoorRating Float?
+
+
+  // relations
+  jobApplications JobApplication[]
+  notes CompanyNote[]
+
+  @@index([name])
+  @@index([city])
+  @@index([industry])
+  @@index([latitude, longitude])
+}
+
+model JobApplication {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Job Information
+  jobTitle String
+  jobUrl String?
+  jobDescription String? @db.Text
+  responsibilities String[] @db.Text 
+  requirements String[] @db.Text
+  benefits String[] @db.Text
+  languages String[]
+
+  location String?
+  isRemote Boolean @default(false)
+  remoteType RemoteType?
+  startDate String?
+  salaryRange String?
+
+  // relations
+  company Company @relation(fields: [companyId], references: [id])
+  companyId String
+
+  DocumentVersions DocumentVersion[]
+
+  // documents
+  resumeVersion String? @db.Text
+  anschreiben String? @db.Text
+
+  // Notion integration
+  notionPageId String? @unique
+  notionUrl String?
+
+  // status
+  status JobApplicationStatus @default(DRAFT)
+  appliedAt DateTime?
+  resonseAt DateTime?
+  interviewDate DateTime?
+  notes String? @db.Text
+
+  parsedJson Json? //save AI extracted job application data
+  generatedCvVersionId String? // 
+  generatedAnschreibenId String? // 
+
+  // source
+  source ApplicationSource @default(DIRECT)
+  
+// contact
+  contact Contact? @relation(fields: [contactId], references: [id])
+  contactId String?
+
+  @@index([jobTitle])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum RemoteType {
+  FULL_REMOTE
+  HYBRID
+  ONSITE
+}
+enum JobApplicationStatus {
+  DRAFT
+  SENT
+  RESPONDED
+  INTERVIEWED
+  OFFERED
+  REJECTED
+  ACCEPTED
+}
+
+enum ApplicationSource {
+  DIRECT
+  LINKEDIN
+  XING
+  STEPSTONE
+  INDEED
+  OTHER
+}
+
+model DocumentVersion{
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // relations
+  application JobApplication @relation(fields: [jobApplicationId], references: [id])
+  jobApplicationId String
+
+  type DocumentVersionType
+  content String @db.Text
+  version Int
+
+  fileUrl String?
+  syncedToNotion Boolean @default(false)
+  aiModelUsed String?
+
+  @@index([jobApplicationId])
+}
+
+enum DocumentVersionType {
+  CV
+  ANSCHREIBEN
+}
+
+// Company Note Sheet (Independent Note System)
+model CompanyNote {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  title String?
+  content String @db.Text
+  tags String[] @db.Text
+
+  @@index([companyId])
+}
+
+model BaseDocument{
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  type DocumentType
+  name String
+  content String @db.Text
+  fileUrl String? // URL to the stored file
+  isActive Boolean @default(true)
+
+  tags String[] // ['frontend', 'backend', 'fullstack']
+  @@index([type, isActive])
+}
+enum DocumentType {
+  CV
+  ANSCHREIBEN
+}
+
+model Contact {
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String
+  email String?
+  phone String?
+  position String?
+  linkedinUrl String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  @@index([companyId])
+}
+
